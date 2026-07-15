@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Advanced Parametric Knot Gear Generator</title>
+	<style>
+		* { box-sizing: border-box; margin: 0; padding: 0; }
+		body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #111; color: #f0f0f0; display: flex; height: 100vh; overflow: hidden; }
+		#sidebar { width: 320px; background-color: #242424; border-right: 1px solid #3d3d3d; display: flex; flex-direction: column; padding: 20px; z-index: 10; box-shadow: 4px 0 15px rgba(0,0,0,0.5); }
+		.header h1 { font-size: 1.25rem; color: #00e676; margin-bottom: 20px; }
+		.control-group { margin-bottom: 18px; }
+		.control-group label { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; color: #ddd; }
+		.control-group label span { color: #00e676; font-weight: bold; }
+		select { width: 100%; padding: 8px; background: #333; color: #fff; border: 1px solid #4d4d4d; border-radius: 4px; outline: none; margin-bottom: 5px; cursor: pointer; font-family: inherit; }
+		input[type="range"] { width: 100%; height: 6px; border-radius: 3px; accent-color: #00e676; cursor: pointer; background: #444; }
+		input[type="number"] { width: 70px; background: #333; color: #fff; border: 1px solid #4d4d4d; border-radius: 3px; padding: 2px 5px; font-family: monospace; text-align: right; pointer-events: none; }
+		.flex-label { display: flex; align-items: center; justify-content: space-between; }
+		.action-buttons { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
+		button { padding: 12px; font-size: 0.9rem; font-weight: bold; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background 0.2s; }
+		.btn-export-stl { background-color: #00e676; color: #111; }
+		.btn-export-stl:hover { background-color: #00c853; }
+		.btn-export-3mf { background-color: #ff9800; }
+		.btn-export-3mf:hover { background-color: #f57c00; }
+		#canvas-container { flex: 1; position: relative; background-color: #1a1a1a; }
+		#legend-overlay { position: absolute; top: 20px; right: 20px; font-family: monospace; font-size: 0.8rem; line-height: 1.4; color: rgba(255, 255, 255, 0.7); pointer-events: none; text-align: right;}
+	</style>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/STLExporter.js"></script>
+</head>
+<body>
+
+	<div id="sidebar">
+		<div class="header">
+			<h1>Knot Gear Generator</h1>
+		</div>
+
+		<div class="controls-container">
+			<div class="control-group">
+				<label>Spine Topological Knot</label>
+				<select id="param-knot-type">
+					<option value="trefoil">Trefoil Knot (3_1)</option>
+					<option value="figure8">Figure-Eight Knot (4_1)</option>
+					<option value="cinquefoil">Cinquefoil Knot (5_1)</option>
+					<option value="three_twist">Three-Twist Knot (5_2)</option>
+					<option value="stevedore">Stevedore Knot (6_1)</option>
+					<option value="granny">Granny Knot (Composite)</option>
+					<option value="square">Square Knot (Composite)</option>
+					<option value="torus37">(3,7)-Torus Knot</option>
+				</select>
+			</div>
+
+			<div class="control-group">
+				<div class="flex-label">
+					<label>Scale Factor (mm)</label>
+					<input type="number" id="val-scale" value="35">
+				</div>
+				<input type="range" id="param-scale" min="20" max="75" step="1" value="35">
+			</div>
+
+			<div class="control-group">
+				<div class="flex-label">
+					<label>Tube Thickness (mm)</label>
+					<input type="number" id="val-tube-radius" value="4.0">
+				</div>
+				<input type="range" id="param-tube-radius" min="1.5" max="10" step="0.5" value="4.0">
+			</div>
+
+			<div class="control-group">
+				<div class="flex-label">
+					<label>Gear Starts</label>
+					<input type="number" id="val-starts" value="15">
+				</div>
+				<input type="range" id="param-starts" min="0" max="50" step="1" value="15">
+			</div>
+
+			<div class="control-group">
+				<div class="flex-label">
+					<label>Thread Depth Ratio</label>
+					<input type="number" id="val-depth" value="0.35">
+				</div>
+				<input type="range" id="param-depth" min="0.0" max="0.9" step="0.05" value="0.35">
+			</div>
+
+			<div class="control-group">
+				<div class="flex-label">
+					<label>Mesh Density</label>
+					<input type="number" id="val-complexity" value="300">
+				</div>
+				<input type="range" id="param-complexity" min="100" max="600" step="10" value="300">
+			</div>
+		</div>
+
+		<div class="action-buttons">
+			<button class="btn-export-stl" onclick="exportSTL()">Export STL</button>
+			<button class="btn-export-3mf" onclick="export3MF()">Export 3MF</button>
+		</div>
+	</div>
+
+	<div id="canvas-container">
+		<div id="legend-overlay">
+			Geometry: Toroidal Helix Mesh<br>
+			Active Topology: <span id="leg-topology">Trefoil Curve</span><br>
+			Status: <span id="leg-status">Dynamic Mesh</span>
+		</div>
+	</div>
+
+	<script>
+		let scene, camera, renderer, controls, activeMesh;
+		const DEFAULT_COLOR = 0x00e676;
+
+		function init() {
+			const container = document.getElementById('canvas-container');
+
+			scene = new THREE.Scene();
+			scene.background = new THREE.Color(0x1a1a1a);
+
+			camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 1, 10000);
+			camera.position.set(0, 130, 160);
+
+			renderer = new THREE.WebGLRenderer({ antialias: true });
+			renderer.setSize(container.clientWidth, container.clientHeight);
+			renderer.shadowMap.enabled = true;
+			container.appendChild(renderer.domElement);
+
+			controls = new THREE.OrbitControls(camera, renderer.domElement);
+			controls.enableDamping = true;
+			controls.dampingFactor = 0.05;
+
+			// Lighting
+			const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+			scene.add(ambientLight);
+
+			const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+			dirLight1.position.set(200, 400, 200);
+			scene.add(dirLight1);
+
+			const dirLight2 = new THREE.DirectionalLight(0x00e676, 0.3);
+			dirLight2.position.set(-200, -200, -200);
+			scene.add(dirLight2);
+
+			window.gridHelper = new THREE.GridHelper(400, 40, 0x3d3d3d, 0x242424);
+			window.gridHelper.position.y = -35;
+			scene.add(window.gridHelper);
+
+			// UI Dropdown Event
+			document.getElementById('param-knot-type').addEventListener('change', (e) => {
+				const labelMap = {
+					'trefoil': 'Trefoil Curve (3_1)',
+					'figure8': 'Figure Eight (4_1)',
+					'cinquefoil': 'Cinquefoil Knot (5_1)',
+					'three_twist': 'Three-Twist Knot (5_2)',
+					'stevedore': 'Stevedore Knot (6_1)',
+					'granny': 'Granny Knot',
+					'square': 'Square Knot',
+					'torus37': '(3,7)-Torus Knot'
+				};
+				document.getElementById('leg-topology').innerText = labelMap[e.target.value];
+				generateKnotGear();
+			});
+
+			// UI Sliders Event Hooks
+			const sliderIds = ['scale', 'tube-radius', 'starts', 'depth', 'complexity'];
+			sliderIds.forEach(id => {
+				const slider = document.getElementById(`param-${id}`);
+				const number = document.getElementById(`val-${id}`);
+				
+				slider.addEventListener('input', (e) => {
+					number.value = parseFloat(e.target.value).toFixed(id === 'tube-radius' || id === 'depth' ? 2 : 0);
+					generateKnotGear();
+				});
+			});
+
+			generateKnotGear();
+			window.addEventListener('resize', onWindowResize);
+			animate();
+		}
+
+		// Parametric equations repository for classic mathematical knots
+		function getKnotVector(type, t, scale) {
+			let x = 0, y = 0, z = 0;
+
+			switch (type) {
+				case 'trefoil':
+					x = (scale * 0.6) * (Math.sin(t) + 2 * Math.sin(2 * t));
+					y = (scale * 0.35) * (Math.sin(3 * t));
+					z = (scale * 0.6) * (Math.cos(t) - 2 * Math.cos(2 * t));
+					break;
+
+				case 'figure8':
+					x = (scale * 0.6) * (2 + Math.cos(2 * t)) * Math.cos(3 * t);
+					y = (scale * 0.45) * Math.sin(4 * t);
+					z = (scale * 0.6) * (2 + Math.cos(2 * t)) * Math.sin(3 * t);
+					break;
+
+				case 'cinquefoil':
+					x = (scale * 0.65) * (Math.sin(2 * t) * (2 + Math.cos(5 * t)));
+					y = (scale * 0.35) * Math.sin(5 * t);
+					z = (scale * 0.65) * (Math.cos(2 * t) * (2 + Math.cos(5 * t)));
+					break;
+
+				case 'three_twist':
+					x = (scale * 0.6) * (Math.sin(2 * t) + 1.5 * Math.sin(t));
+					y = (scale * 0.4) * (Math.sin(3 * t) + 0.5 * Math.sin(t));
+					z = (scale * 0.6) * (Math.cos(2 * t) - 1.5 * Math.cos(t));
+					break;
+
+				case 'stevedore':
+					x = (scale * 0.5) * (Math.sin(t) + 2 * Math.sin(2 * t));
+					y = (scale * 0.4) * (Math.sin(3 * t) + 0.6 * Math.sin(5 * t));
+					z = (scale * 0.5) * (Math.cos(t) - 2 * Math.cos(2 * t));
+					break;
+
+				case 'granny':
+					// Sequence of two identical trefoil loops
+					let tG = t * 2;
+					x = (scale * 0.5) * (Math.sin(tG) + 2 * Math.sin(2 * tG)) + scale * 0.4 * Math.cos(t);
+					y = (scale * 0.3) * Math.sin(3 * tG);
+					z = (scale * 0.5) * (Math.cos(tG) - 2 * Math.cos(2 * tG));
+					break;
+
+				case 'square':
+					// Composite knot consisting of a left-handed and a right-handed trefoil
+					let tS = t * 2;
+					x = (scale * 0.5) * (Math.sin(tS) + 2 * Math.sin(2 * tS));
+					y = (scale * 0.35) * Math.sin(3 * tS) * (t < Math.PI ? 1 : -1);
+					z = (scale * 0.5) * (Math.cos(tS) - 2 * Math.cos(2 * tS));
+					break;
+
+				case 'torus37':
+					// (3,7) Torus Knot layout
+					let rT = scale * 0.6 * (2 + Math.cos(7 * t));
+					x = rT * Math.cos(3 * t);
+					y = scale * 0.4 * Math.sin(7 * t);
+					z = rT * Math.sin(3 * t);
+					break;
+			}
+
+			return new THREE.Vector3(x, y, z);
+		}
+
+		// Main mesh building pipeline mapping helical threads to the active parametric vector path
+		function generateKnotGear() {
+			if (activeMesh) {
+				scene.remove(activeMesh);
+				activeMesh.geometry.dispose();
+				activeMesh.material.dispose();
+			}
+
+			const knotType = document.getElementById('param-knot-type').value;
+			const scale = parseFloat(document.getElementById('param-scale').value);
+			const tubeR = parseFloat(document.getElementById('param-tube-radius').value);
+			const starts = parseInt(document.getElementById('param-starts').value);
+			const depthRatio = parseFloat(document.getElementById('param-depth').value);
+			const complexity = parseInt(document.getElementById('param-complexity').value);
+
+			const geometry = new THREE.BufferGeometry();
+			const vertices = [];
+			const indices = [];
+
+			const resR = complexity * 4; 
+			const resX = 32;             
+
+			for (let ringIdx = 0; ringIdx <= resR; ringIdx++) {
+				const t = (ringIdx / resR) * Math.PI * 2;
+				
+				const spinePos = getKnotVector(knotType, t, scale);
+
+				// Sampling delta frame vectors
+				const delta = 0.001;
+				const futureSpinePos = getKnotVector(knotType, t + delta, scale);
+
+				const tangent = new THREE.Vector3().subVectors(futureSpinePos, spinePos).normalize();
+				let up = new THREE.Vector3(0, 1, 0);
+				if (Math.abs(tangent.dot(up)) > 0.95) {
+					up.set(1, 0, 0);
+				}
+				const binormal = new THREE.Vector3().crossVectors(tangent, up).normalize();
+				const normal = new THREE.Vector3().crossVectors(binormal, tangent).normalize();
+
+				for (let xIdx = 0; xIdx <= resX; xIdx++) {
+					const uAngle = (xIdx / resX) * Math.PI * 2;
+
+					// Seamless gear thread distribution mechanics
+					const twistOffset = t * 15 * starts;
+					const twistingAngle = uAngle - twistOffset;
+
+					let threadInfluence = Math.sin(twistingAngle);
+					threadInfluence = Math.max(-0.6, Math.min(0.6, threadInfluence * 2)); 
+
+					const currentTubeR = tubeR + (threadInfluence * tubeR * depthRatio);
+
+					const offsetX = currentTubeR * Math.cos(uAngle) * normal.x + currentTubeR * Math.sin(uAngle) * binormal.x;
+					const offsetY = currentTubeR * Math.cos(uAngle) * normal.y + currentTubeR * Math.sin(uAngle) * binormal.y;
+					const offsetZ = currentTubeR * Math.cos(uAngle) * normal.z + currentTubeR * Math.sin(uAngle) * binormal.z;
+
+					const finalX = spinePos.x + offsetX;
+					const finalY = spinePos.y + offsetY;
+					const finalZ = spinePos.z + offsetZ;
+
+					vertices.push(finalX, finalY, finalZ);
+				}
+			}
+
+			// Generate procedural faces
+			for (let ringIdx = 0; ringIdx < resR; ringIdx++) {
+				for (let xIdx = 0; xIdx < resX; xIdx++) {
+					const row1 = ringIdx * (resX + 1);
+					const row2 = (ringIdx + 1) * (resX + 1);
+
+					const p1 = row1 + xIdx;
+					const p2 = row1 + xIdx + 1;
+					const p3 = row2 + xIdx;
+					const p4 = row2 + xIdx + 1;
+
+					indices.push(p1, p3, p2);
+					indices.push(p2, p3, p4);
+				}
+			}
+
+			geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+			geometry.setIndex(indices);
+			geometry.computeVertexNormals();
+
+			const material = new THREE.MeshStandardMaterial({
+				color: DEFAULT_COLOR,
+				roughness: 0.2,
+				metalness: 0.8,
+				flatShading: false,
+				side: THREE.DoubleSide
+			});
+
+			activeMesh = new THREE.Mesh(geometry, material);
+			scene.add(activeMesh);
+
+			// Dynamically realigns standard scene bounds grid
+			window.gridHelper.position.y = -(scale * 0.6 + tubeR);
+		}
+
+		function onWindowResize() {
+			const container = document.getElementById('canvas-container');
+			camera.aspect = container.clientWidth / container.clientHeight;
+			camera.updateProjectionMatrix();
+			renderer.setSize(container.clientWidth, container.clientHeight);
+		}
+
+		function animate() {
+			requestAnimationFrame(animate);
+			controls.update();
+			renderer.render(scene, camera);
+		}
+
+		function exportSTL() {
+			if (!activeMesh) return;
+			const knotType = document.getElementById('param-knot-type').value;
+			const exporter = new THREE.STLExporter();
+			const stlData = exporter.parse(activeMesh, { binary: true });
+			const blob = new Blob([stlData], { type: 'application/octet-stream' });
+			const link = document.createElement('a');
+			link.href = URL.createObjectURL(blob);
+			link.download = `${knotType}_knot_gear.stl`;
+			link.click();
+		}
+
+		function export3MF() {
+			alert("This standalone HTML version generates STL directly. Functional binary 3MF export requires additional JS modules not included in this single-file visualization example.");
+		}
+
+		window.onload = init;
+	</script>
+</body>
+</html>
