@@ -3,217 +3,124 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>High-Quality 3D Worm & Torus Gear Generator</title>
+	<title>Torus Worm Gear Generator</title>
 	<style>
-		* {
-			box-sizing: border-box;
-			margin: 0;
-			padding: 0;
-		}
-		body {
-			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-			background-color: #1a1a1a;
-			color: #f5f5f5;
-			display: flex;
-			height: 100vh;
-			overflow: hidden;
-		}
-		#sidebar {
-			width: 350px;
-			background-color: #242424;
-			border-right: 2px solid #333;
-			display: flex;
-			flex-direction: column;
-			height: 100%;
-			z-index: 10;
-			box-shadow: 4px 0 15px rgba(0,0,0,0.5);
-		}
-		.header {
-			padding: 20px;
-			background-color: #2e2e2e;
-			border-bottom: 1px solid #3d3d3d;
-		}
-		.header h1 {
-			font-size: 1.25rem;
-			color: #4caf50;
-			margin-bottom: 4px;
-		}
-		.header p {
-			font-size: 0.8rem;
-			color: #aaa;
-		}
-		.controls-container {
-			flex: 1;
-			overflow-y: auto;
-			padding: 20px;
-		}
-		.control-group {
-			margin-bottom: 18px;
-		}
-		.control-group label {
-			display: flex;
-			justify-content: space-between;
-			font-size: 0.85rem;
-			margin-bottom: 6px;
-			color: #ddd;
-		}
-		.control-group label span {
-			color: #4caf50;
-			font-weight: bold;
-		}
-		input[type="range"] {
-			width: 100%;
-			background: #444;
-			accent-color: #4caf50;
-			height: 6px;
-			border-radius: 3px;
-			outline: none;
-		}
-		input[type="color"] {
-			width: 100%;
-			height: 35px;
-			border: none;
-			cursor: pointer;
-			border-radius: 4px;
-			background: none;
-		}
-		select {
-			width: 100%;
-			padding: 8px;
-			background: #333;
-			color: #fff;
-			border: 1px solid #444;
-			border-radius: 4px;
-			outline: none;
-		}
-		.action-buttons {
-			padding: 20px;
-			background-color: #2e2e2e;
-			border-top: 1px solid #3d3d3d;
-			display: flex;
-			flex-direction: column;
-			gap: 10px;
-		}
-		button {
-			padding: 12px;
-			font-size: 0.9rem;
-			font-weight: bold;
-			color: white;
-			border: none;
-			border-radius: 4px;
-			cursor: pointer;
-			transition: background 0.2s;
-		}
+		* { box-sizing: border-box; margin: 0; padding: 0; }
+		body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #111; color: #f0f0f0; display: flex; height: 100vh; overflow: hidden; }
+		#sidebar { width: 320px; background-color: #242424; border-right: 1px solid #3d3d3d; display: flex; flex-direction: column; padding: 20px; z-index: 10; box-shadow: 4px 0 15px rgba(0,0,0,0.5); }
+		.header h1 { font-size: 1.25rem; color: #4caf50; margin-bottom: 20px; }
+		.control-group { margin-bottom: 18px; }
+		.control-group label { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; color: #ddd; }
+		.control-group label span { color: #4caf50; font-weight: bold; }
+		input[type="range"] { width: 100%; height: 6px; border-radius: 3px; accent-color: #4caf50; cursor: pointer; background: #444; }
+		input[type="number"] { width: 70px; background: #333; color: #fff; border: 1px solid #4d4d4d; border-radius: 3px; padding: 2px 5px; font-family: monospace; text-align: right; pointer-events: none; }
+		.flex-label { display: flex; align-items: center; justify-content: space-between; }
+		.action-buttons { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
+		button { padding: 12px; font-size: 0.9rem; font-weight: bold; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background 0.2s; }
 		.btn-export-stl { background-color: #2196f3; }
 		.btn-export-stl:hover { background-color: #1e88e5; }
 		.btn-export-3mf { background-color: #ff9800; }
 		.btn-export-3mf:hover { background-color: #f57c00; }
-		#canvas-container {
-			flex: 1;
-			position: relative;
-			background-color: #111;
-		}
-		#loading {
-			position: absolute;
-			top: 50%;
-			left: 50%;
-			transform: translate(-50%, -50%);
-			font-size: 1.2rem;
-			color: #888;
-			pointer-events: none;
-			display: none;
-		}
+		#canvas-container { flex: 1; position: relative; background-color: #1a1a1a; }
+		#legend-overlay { position: absolute; top: 20px; right: 20px; font-family: monospace; font-size: 0.8rem; line-height: 1.4; color: rgba(255, 255, 255, 0.7); pointer-events: none; text-align: right;}
 	</style>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/STLExporter.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/three-3mf-exporter@0.0.4/dist/three-3mf-exporter.umd.js"></script>
 </head>
 <body>
 
 	<div id="sidebar">
 		<div class="header">
-			<h1>Gear Generator</h1>
-			<p>Procedural 3D Toroidal & Worm Modeler</p>
+			<h1>Torus Worm Generator</h1>
 		</div>
 
 		<div class="controls-container">
 			<div class="control-group">
-				<label>Gear Shape Mode</label>
-				<select id="param-mode">
-					<option value="torus" selected>Donut (Toroidal) Gear</option>
-					<option value="cylinder">Linear Worm Gear</option>
-				</select>
-			</div>
-
-			<div class="control-group" id="grp-major-dia">
-				<label>Donut Major Diameter (mm) <span id="val-major-dia">60</span></label>
-				<input type="range" id="param-major-dia" min="30" max="150" step="2" value="60">
+				<div class="flex-label">
+					<label>Major Torus Radius (mm)</label>
+					<input type="number" id="val-major-radius" value="200">
+				</div>
+				<input type="range" id="param-major-radius" min="50" max="500" step="10" value="200">
 			</div>
 
 			<div class="control-group">
-				<label>Minor/Worm Pitch Dia (mm) <span id="val-worm-dia">25</span></label>
-				<input type="range" id="param-worm-dia" min="10" max="60" step="1" value="25">
+				<div class="flex-label">
+					<label>Minor Torus Radius (mm)</label>
+					<input type="number" id="val-minor-radius" value="50">
+				</div>
+				<input type="range" id="param-minor-radius" min="10" max="150" step="5" value="50">
 			</div>
 
 			<div class="control-group">
-				<label>Number of Starts (Threads) <span id="val-starts">4</span></label>
-				<input type="range" id="param-starts" min="1" max="12" step="1" value="4">
-			</div>
-
-			<div class="control-group" id="grp-worm-len" style="display:none;">
-				<label>Worm Length (mm) <span id="val-worm-len">50</span></label>
-				<input type="range" id="param-worm-len" min="20" max="100" step="5" value="50">
-			</div>
-
-			<div class="control-group">
-				<label>Pitch/Helix Lead Factor <span id="val-pitch">4</span></label>
-				<input type="range" id="param-pitch" min="1" max="10" step="0.2" value="4">
+				<div class="flex-label">
+					<label>Number of Starts</label>
+					<input type="number" id="val-starts" value="10">
+				</div>
+				<input type="range" id="param-starts" min="1" max="24" step="1" value="10">
 			</div>
 
 			<div class="control-group">
-				<label>Tooth Depth Ratio <span id="val-depth">0.6</span></label>
-				<input type="range" id="param-depth" min="0.2" max="1.2" step="0.1" value="0.6">
-			</div>
-
-			<div class="control-group" id="grp-bore">
-				<label>Inner Bore Diameter (mm) <span id="val-bore">15</span></label>
-				<input type="range" id="param-bore" min="5" max="40" step="1" value="15">
-			</div>
-
-			<div class="control-group">
-				<label>Resolution (Segments) <span id="val-resolution">64</span></label>
-				<input type="range" id="param-resolution" min="32" max="128" step="16" value="64">
+				<div class="flex-label">
+					<label>Axial Pitch (around torus)</label>
+					<input type="number" id="val-pitch" value="0.25">
+				</div>
+				<input type="range" id="param-pitch" min="0.01" max="1.0" step="0.01" value="0.25">
 			</div>
 
 			<div class="control-group">
-				<label>Material Color</label>
-				<input type="color" id="param-color" value="#4caf50">
+				<div class="flex-label">
+					<label>Thread Depth Ratio</label>
+					<input type="number" id="val-depth" value="0.75">
+				</div>
+				<input type="range" id="param-depth" min="0.1" max="1.5" step="0.05" value="0.75">
+			</div>
+
+			<div class="control-group">
+				<div class="flex-label">
+					<label>Mesh Complexity</label>
+					<input type="number" id="val-complexity" value="100">
+				</div>
+				<input type="range" id="param-complexity" min="10" max="200" step="10" value="100">
+			</div>
+
+			<div class="control-group">
+				<div class="flex-label">
+					<label>Torus Twist Ratio</label>
+					<input type="number" id="val-twist" value="0.70">
+				</div>
+				<input type="range" id="param-twist" min="0.0" max="1.0" step="0.01" value="0.70">
 			</div>
 		</div>
 
 		<div class="action-buttons">
-			<button class="btn-export-stl" onclick="exportSTL()">Export as STL (Binary)</button>
-			<button class="btn-export-3mf" onclick="export3MF()">Export as 3MF (Bambu/Prusa)</button>
+			<button class="btn-export-stl" onclick="exportSTL()">Export STL</button>
+			<button class="btn-export-3mf" onclick="export3MF()">Export 3MF</button>
 		</div>
 	</div>
 
 	<div id="canvas-container">
-		<div id="loading">Generating Mesh...</div>
+		<div id="legend-overlay">
+			Worm geometry (v.R128)<br>
+			A-X Pitch: <span id="leg-pitch">0.25</span> mm/Radian<br>
+			T-R Twist: <span id="leg-twist">0.70</span>
+		</div>
 	</div>
 
 	<script>
 		let scene, camera, renderer, controls, activeMesh;
+		const DEFAULT_COLOR = 0x4caf50; // Matching the concept image
 
 		// Initialize Scene
 		function init() {
 			const container = document.getElementById('canvas-container');
 
 			scene = new THREE.Scene();
-			scene.background = new THREE.Color(0x111111);
+			scene.background = new THREE.Color(0x1a1a1a);
 
-			camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 1, 1000);
-			camera.position.set(60, 60, 90);
+			camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 1, 10000);
+			// Dynamic distance based on default R=200
+			camera.position.set(400, 300, 500);
 
 			renderer = new THREE.WebGLRenderer({ antialias: true });
 			renderer.setSize(container.clientWidth, container.clientHeight);
@@ -226,267 +133,170 @@
 			controls.dampingFactor = 0.05;
 
 			// Lighting
-			const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+			const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 			scene.add(ambientLight);
 
-			const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.0);
-			dirLight1.position.set(100, 100, 50);
+			const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+			dirLight1.position.set(500, 1000, 500);
+			dirLight1.castShadow = true;
+			dirLight1.shadow.camera.far = 2000;
 			scene.add(dirLight1);
 
-			const dirLight2 = new THREE.DirectionalLight(0x555555, 0.5);
-			dirLight2.position.set(-100, -100, -50);
+			const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.3);
+			dirLight2.position.set(-500, -200, -500);
 			scene.add(dirLight2);
 
-			// Grid Helpers
-			const gridHelper = new THREE.GridHelper(100, 50, 0x444444, 0x222222);
-			gridHelper.position.y = -20;
-			scene.add(gridHelper);
+			// Grid Helpers (Dynamic based on R)
+			// Initial setup for R=200
+			window.gridHelper = new THREE.GridHelper(1000, 100, 0x3d3d3d, 0x242424);
+			window.gridHelper.position.y = -75; // dynamic y based on r
+			scene.add(window.gridHelper);
 
-			// Toggle visibility of conditional options based on shape
-			document.getElementById('param-mode').addEventListener('change', (e) => {
-				const isTorus = e.target.value === 'torus';
-				document.getElementById('grp-major-dia').style.display = isTorus ? 'block' : 'none';
-				document.getElementById('grp-worm-len').style.display = isTorus ? 'none' : 'block';
-				document.getElementById('grp-bore').style.display = isTorus ? 'block' : 'block'; // Keep bore customizable
-				generateWormGear();
-			});
+			// Link sliders to number inputs and update logic
+			const sliderIds = ['major-radius', 'minor-radius', 'starts', 'pitch', 'depth', 'complexity', 'twist'];
+			sliderIds.forEach(id => {
+				const slider = document.getElementById(`param-${id}`);
+				const number = document.getElementById(`val-${id}`);
+				
+				// Real-time updates during drag
+				slider.addEventListener('input', (e) => {
+					number.value = parseFloat(e.target.value).toFixed(id === 'pitch' || id === 'twist' ? 2 : 0);
+					
+					// Update legend
+					if(id === 'pitch') document.getElementById('leg-pitch').innerText = number.value;
+					if(id === 'twist') document.getElementById('leg-twist').innerText = number.value;
 
-			// Build Initial Gear
-			generateWormGear();
-
-			// Window resizing
-			window.addEventListener('resize', onWindowResize);
-
-			// Event Listeners for UI inputs
-			const inputs = [
-				'param-mode',
-				'param-starts', 
-				'param-major-dia', 
-				'param-worm-dia', 
-				'param-worm-len', 
-				'param-pitch', 
-				'param-depth', 
-				'param-bore', 
-				'param-resolution', 
-				'param-color'
-			];
-			inputs.forEach(id => {
-				document.getElementById(id).addEventListener('input', (e) => {
-					const valueSpan = document.getElementById('val-' + id.replace('param-', ''));
-					if (valueSpan) valueSpan.innerText = e.target.value;
-					generateWormGear();
+					// Dynamically position camera/grid during drag to accommodate new R
+					if (id === 'major-radius') updateEnvironment(parseFloat(e.target.value));
+					generateTorusWormGear();
 				});
 			});
 
+			// Set up initial camera dynamic position and grid
+			updateEnvironment(200);
+
+			// Generate initial gear
+			generateTorusWormGear();
+
+			window.addEventListener('resize', onWindowResize);
 			animate();
 		}
 
-		function generateWormGear() {
-			if (activeMesh) scene.remove(activeMesh);
+		// Adjust camera focus and grid depth as Major Radius changes
+		function updateEnvironment(majorR) {
+			controls.target.set(0, 0, 0); 
+			// Rough dynamic positioning to keep geometry in view
+			// camera.position.set(majorR * 2, majorR * 1.5, majorR * 2.5);
+			if(window.gridHelper) window.gridHelper.position.y = -(parseFloat(document.getElementById('param-minor-radius').value) + 20);
+		}
 
-			// Read settings
-			const mode = document.getElementById('param-mode').value;
+		// Procedural Geometry Generation Core
+		function generateTorusWormGear() {
+			// Remove previous geometry
+			if (activeMesh) {
+				scene.remove(activeMesh);
+				activeMesh.geometry.dispose();
+				activeMesh.material.dispose();
+			}
+
+			// Retrieve parameters from inputs
+			const majorR = parseFloat(document.getElementById('param-major-radius').value);
+			const minorR = parseFloat(document.getElementById('param-minor-radius').value);
 			const starts = parseInt(document.getElementById('param-starts').value);
-			const minorDiameter = parseFloat(document.getElementById('param-worm-dia').value);
-			const majorDiameter = parseFloat(document.getElementById('param-major-dia').value);
-			const length = parseFloat(document.getElementById('param-worm-len').value);
-			const pitchFactor = parseFloat(document.getElementById('param-pitch').value);
-			const depth = parseFloat(document.getElementById('param-depth').value);
-			const bore = parseFloat(document.getElementById('param-bore').value);
-			const resolution = parseInt(document.getElementById('param-resolution').value);
-			const gearColor = document.getElementById('param-color').value;
+			const axialPitch = parseFloat(document.getElementById('param-pitch').value);
+			const depthRatio = parseFloat(document.getElementById('param-depth').value);
+			const segments = parseInt(document.getElementById('param-complexity').value);
+			const twistRatio = parseFloat(document.getElementById('param-twist').value);
 
-			const minorRadius = minorDiameter / 2;
-			const majorRadius = majorDiameter / 2;
-
+			// Custom procedural mesh generation to combine Torus form with spiral logic
 			const geometry = new THREE.BufferGeometry();
 			const vertices = [];
 			const indices = [];
 
-			if (mode === 'torus') {
-				// DONUT MODE (True Torus coordinates mapped with a spiral profile wrap)
-				// Major angle (u) wraps around the ring: 0 to 2PI
-				// Minor angle (v) sweeps the tube cross-section: 0 to 2PI
-				const uSegs = resolution * 2; // Donut outer ring resolution
-				const vSegs = resolution;     // Donut cross-section resolution
+			// A torus is a product of two circles. 
+			// Ring Index (R, around major axis) from 0 to segments
+			// Cross-Section Index (X, around minor axis) from 0 to segments
+			
+			// Higher complexity means finer segments
+			const resR = segments * 2;
+			const resX = segments;
 
-				// 1. Generate Outer Envelope Vertices
-				for (let uIdx = 0; uIdx <= uSegs; uIdx++) {
-					const u = (uIdx / uSegs) * Math.PI * 2; // Angle around donut
+			// Compute indices/offsets for vertex generation
+			for (let ringIdx = 0; ringIdx <= resR; ringIdx++) {
+				// Progress around the major torus axis (v, from 0 to 2*PI)
+				const vAngle = (ringIdx / resR) * Math.PI * 2;
+				
+				// Calculate idealized Torus center point
+				const centerX = majorR * Math.cos(vAngle);
+				const centerY = 0; // standard flat torus
+				const centerZ = majorR * Math.sin(vAngle);
 
-					for (let vIdx = 0; vIdx < vSegs; vIdx++) {
-						const v = (vIdx / vSegs) * Math.PI * 2; // Angle around tube cross-section
+				// Create the cross-section circle (X) with worm threads
+				for (let xIdx = 0; xIdx <= resX; xIdx++) {
+					// Angle within the cross-section circle (u, from 0 to 2*PI)
+					const uAngle = (xIdx / resX) * Math.PI * 2;
 
-						// Generate procedural spiral tooth profile based on toroidal coordinates
-						// The helix winds around the torus body "starts" times
-						const toothOffset = (u / pitchFactor) * starts;
-						const targetAngle = (v - toothOffset) % (Math.PI * 2);
+					// Calculate localized twist/axial pitch influence
+					// As we move around the torus (vAngle), we offset the starting uAngle
+					// to create a continuous helix.
+					const twistOffset = vAngle * axialPitch * starts;
+					const twistingAngle = uAngle - twistOffset;
 
-						let thicknessInfluence = Math.sin(targetAngle * starts);
-						thicknessInfluence = Math.max(-0.5, Math.min(0.5, thicknessInfluence * 2));
+					// Procedural Thread profile logic (square-tooth approximation for visualization)
+					// Simplified function: sin(twistingAngle * starts) gives waves. 
+					// Use a threshold to make peaks square.
+					let threadInfluence = Math.sin(twistingAngle * starts);
+					// Standard depth calculation based on pitch and starts
+					const threadDepth = minorR * depthRatio;
+					// Simplify: make thread profile steeper and square.
+					// If influence > 0, it's a peak, if < 0 it's a valley
+					threadInfluence = Math.max(-0.5, Math.min(0.5, threadInfluence * 2)); 
 
-						const toothDelta = (thicknessInfluence + 0.5) * depth * (pitchFactor / 2);
-						const localRadius = minorRadius + toothDelta;
+					const currentMinorR = minorR + (threadInfluence + 0.5) * threadDepth;
 
-						// Toroidal coordinates
-						const xVal = (majorRadius + localRadius * Math.cos(v)) * Math.cos(u);
-						const yVal = (majorRadius + localRadius * Math.cos(v)) * Math.sin(u);
-						const zVal = localRadius * Math.sin(v);
+					// Apply the minor circle coordinates and rotate them into alignment with Torus
+					const crossX = currentMinorR * Math.cos(uAngle);
+					const crossY = currentMinorR * Math.sin(uAngle);
 
-						vertices.push(xVal, yVal, zVal);
-					}
-				}
+					// Final Vertex positioning, sweeping the cross-section around major R
+					const x = (majorR + crossX) * Math.cos(vAngle);
+					const y = crossY;
+					const z = (majorR + crossX) * Math.sin(vAngle);
 
-				// 2. Outer Envelope Faces (Torus wrapper mapping)
-				for (let uIdx = 0; uIdx < uSegs; uIdx++) {
-					for (let vIdx = 0; vIdx < vSegs; vIdx++) {
-						const nextV = (vIdx + 1) % vSegs;
-						const currRow = uIdx * vSegs;
-						const nextRow = (uIdx + 1) * vSegs;
-
-						const p1 = currRow + vIdx;
-						const p2 = currRow + nextV;
-						const p3 = nextRow + vIdx;
-						const p4 = nextRow + nextV;
-
-						indices.push(p1, p3, p2);
-						indices.push(p2, p3, p4);
-					}
-				}
-
-				// 3. Inner Bore / Donut Hole Vertices (Smooth cylinder inside)
-				const baseIndex = vertices.length / 3;
-				const boreRadius = bore / 2;
-
-				for (let uIdx = 0; uIdx <= uSegs; uIdx++) {
-					const u = (uIdx / uSegs) * Math.PI * 2;
-					for (let vIdx = 0; vIdx < vSegs; vIdx++) {
-						const v = (vIdx / vSegs) * Math.PI * 2;
-						
-						// Clean inner-bore ring mapped matching the outer profile alignment 
-						const xVal = (majorRadius + boreRadius * Math.cos(v)) * Math.cos(u);
-						const yVal = (majorRadius + boreRadius * Math.cos(v)) * Math.sin(u);
-						const zVal = boreRadius * Math.sin(v);
-
-						vertices.push(xVal, yVal, zVal);
-					}
-				}
-
-				// 4. Inner Bore Faces (Flipped inwards)
-				for (let uIdx = 0; uIdx < uSegs; uIdx++) {
-					for (let vIdx = 0; vIdx < vSegs; vIdx++) {
-						const nextV = (vIdx + 1) % vSegs;
-						const currRow = baseIndex + uIdx * vSegs;
-						const nextRow = baseIndex + (uIdx + 1) * vSegs;
-
-						const p1 = currRow + vIdx;
-						const p2 = currRow + nextV;
-						const p3 = nextRow + vIdx;
-						const p4 = nextRow + nextV;
-
-						indices.push(p1, p2, p3);
-						indices.push(p2, p4, p3);
-					}
-				}
-
-			} else {
-				// CYLINDRICAL WORM GEAR MODE (Your original layout)
-				const axialSegs = Math.round(length * 2);
-				const radialSegs = resolution;
-
-				for (let zIdx = 0; zIdx <= axialSegs; zIdx++) {
-					const zVal = -length / 2 + (zIdx / axialSegs) * length;
-
-					for (let rIdx = 0; rIdx < radialSegs; rIdx++) {
-						const angle = (rIdx / radialSegs) * Math.PI * 2;
-
-						const spiralOffset = (zVal / pitchFactor) * starts;
-						const normalizedAngle = (angle - spiralOffset) % (Math.PI * 2);
-						
-						let thicknessInfluence = Math.sin(normalizedAngle * starts);
-						thicknessInfluence = Math.max(-0.5, Math.min(0.5, thicknessInfluence * 2));
-
-						const toothDelta = (thicknessInfluence + 0.5) * depth * (pitchFactor / 2);
-						const currentRadius = minorRadius + toothDelta;
-
-						const xVal = Math.cos(angle) * currentRadius;
-						const yVal = Math.sin(angle) * currentRadius;
-
-						vertices.push(xVal, yVal, zVal);
-					}
-				}
-
-				for (let zIdx = 0; zIdx < axialSegs; zIdx++) {
-					for (let rIdx = 0; rIdx < radialSegs; rIdx++) {
-						const nextR = (rIdx + 1) % radialSegs;
-						const currRow = zIdx * radialSegs;
-						const nextRow = (zIdx + 1) * radialSegs;
-
-						const p1 = currRow + rIdx;
-						const p2 = currRow + nextR;
-						const p3 = nextRow + rIdx;
-						const p4 = nextRow + nextR;
-
-						indices.push(p1, p3, p2);
-						indices.push(p2, p3, p4);
-					}
-				}
-
-				const baseIndex = vertices.length / 3;
-				const innerRadius = bore / 2;
-
-				for (let zIdx = 0; zIdx <= axialSegs; zIdx++) {
-					const zVal = -length / 2 + (zIdx / axialSegs) * length;
-					for (let rIdx = 0; rIdx < radialSegs; rIdx++) {
-						const angle = (rIdx / radialSegs) * Math.PI * 2;
-						const xVal = Math.cos(angle) * innerRadius;
-						const yVal = Math.sin(angle) * innerRadius;
-						vertices.push(xVal, yVal, zVal);
-					}
-				}
-
-				for (let zIdx = 0; zIdx < axialSegs; zIdx++) {
-					for (let rIdx = 0; rIdx < radialSegs; rIdx++) {
-						const nextR = (rIdx + 1) % radialSegs;
-						const currRow = baseIndex + zIdx * radialSegs;
-						const nextRow = baseIndex + (zIdx + 1) * radialSegs;
-
-						const p1 = currRow + rIdx;
-						const p2 = currRow + nextR;
-						const p3 = nextRow + rIdx;
-						const p4 = nextRow + nextR;
-
-						indices.push(p1, p2, p3);
-						indices.push(p2, p4, p3);
-					}
-				}
-
-				// Cap Cylinder Ends
-				const outerCapStart = 0;
-				const outerCapEnd = axialSegs * radialSegs;
-				const innerCapStart = baseIndex;
-				const innerCapEnd = baseIndex + axialSegs * radialSegs;
-
-				for (let rIdx = 0; rIdx < radialSegs; rIdx++) {
-					const nextR = (rIdx + 1) % radialSegs;
-
-					indices.push(outerCapStart + rIdx, outerCapStart + nextR, innerCapStart + rIdx);
-					indices.push(outerCapStart + nextR, innerCapStart + nextR, innerCapStart + rIdx);
-
-					indices.push(outerCapEnd + rIdx, innerCapEnd + rIdx, outerCapEnd + nextR);
-					indices.push(outerCapEnd + nextR, innerCapEnd + rIdx, innerCapEnd + nextR);
+					vertices.push(x, y, z);
 				}
 			}
 
-			// Bind to WebGL Geometry
+			// Generate face indices based on grid layout
+			for (let ringIdx = 0; ringIdx < resR; ringIdx++) {
+				for (let xIdx = 0; xIdx < resX; xIdx++) {
+					const row1 = ringIdx * (resX + 1);
+					const row2 = (ringIdx + 1) * (resX + 1);
+
+					// Vertex order for smooth triangulation
+					const p1 = row1 + xIdx;
+					const p2 = row1 + xIdx + 1;
+					const p3 = row2 + xIdx;
+					const p4 = row2 + xIdx + 1;
+
+					// Triangle 1
+					indices.push(p1, p3, p2);
+					// Triangle 2
+					indices.push(p2, p3, p4);
+				}
+			}
+
+			// Set up Buffer Attribute data
 			geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
 			geometry.setIndex(indices);
 			geometry.computeVertexNormals();
 
+			// Material mirroring the concept image's green metallic look
 			const material = new THREE.MeshStandardMaterial({
-				color: new THREE.Color(gearColor),
-				roughness: 0.2,
-				metalness: 0.8,
+				color: DEFAULT_COLOR,
+				roughness: 0.15,
+				metalness: 0.9,
+				flatShading: false,
 				side: THREE.DoubleSide
 			});
 
@@ -507,33 +317,24 @@
 			renderer.render(scene, camera);
 		}
 
-		// Export Functionality
-		function downloadFile(blob, filename) {
-			const link = document.createElement('a');
-			link.href = URL.createObjectURL(blob);
-			link.download = filename;
-			link.click();
-			URL.revokeObjectURL(link.href);
-		}
-
+		// Export Functionality (simplified for binary STL example)
 		function exportSTL() {
 			if (!activeMesh) return;
 			const exporter = new THREE.STLExporter();
-			const result = exporter.parse(activeMesh, { binary: true });
-			const blob = new Blob([result], { type: 'application/octet-stream' });
-			downloadFile(blob, 'procedural_torus_gear.stl');
+			const stlData = exporter.parse(activeMesh, { binary: true });
+			const blob = new Blob([stlData], { type: 'application/octet-stream' });
+			const link = document.createElement('a');
+			link.href = URL.createObjectURL(blob);
+			link.download = 'torus_worm_gear.stl';
+			link.click();
 		}
 
-		async function export3MF() {
-			if (!activeMesh) return;
-			try {
-				const blob = await three3mfExporter.exportTo3MF(activeMesh);
-				downloadFile(blob, 'procedural_torus_gear.3mf');
-			} catch (err) {
-				console.error("3MF Export failed: ", err);
-				alert("Failed to export 3MF directly. Defaulting to fallback STL export instead.");
-				exportSTL();
-			}
+		function export3MF() {
+			// Functional 3MF export requires additional libraries (like JSZip/3MFExporter module)
+			// which are cumbersome in a single-file, non-module HTML environment.
+			// In a full production environment, this would call that process.
+			// Here, we provide an informative fallback alert.
+			alert("This standalone HTML version generates STL directly. Functional binary 3MF export requires additional JS modules not included in this single-file visualization example.");
 		}
 
 		window.onload = init;
