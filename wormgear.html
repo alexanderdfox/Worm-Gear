@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>High-Quality 3D Worm Gear Generator</title>
+	<style>
+		* {
+			box-sizing: border-box;
+			margin: 0;
+			padding: 0;
+		}
+		body {
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+			background-color: #1a1a1a;
+			color: #f5f5f5;
+			display: flex;
+			height: 100vh;
+			overflow: hidden;
+		}
+		#sidebar {
+			width: 350px;
+			background-color: #242424;
+			border-right: 2px solid #333;
+			display: flex;
+			flex-direction: column;
+			height: 100%;
+			z-index: 10;
+			box-shadow: 4px 0 15px rgba(0,0,0,0.5);
+		}
+		.header {
+			padding: 20px;
+			background-color: #2e2e2e;
+			border-bottom: 1px solid #3d3d3d;
+		}
+		.header h1 {
+			font-size: 1.25rem;
+			color: #4caf50;
+			margin-bottom: 4px;
+		}
+		.header p {
+			font-size: 0.8rem;
+			color: #aaa;
+		}
+		.controls-container {
+			flex: 1;
+			overflow-y: auto;
+			padding: 20px;
+		}
+		.control-group {
+			margin-bottom: 18px;
+		}
+		.control-group label {
+			display: flex;
+			justify-content: space-between;
+			font-size: 0.85rem;
+			margin-bottom: 6px;
+			color: #ddd;
+		}
+		.control-group label span {
+			color: #4caf50;
+			font-weight: bold;
+		}
+		input[type="range"] {
+			width: 100%;
+			background: #444;
+			accent-color: #4caf50;
+			height: 6px;
+			border-radius: 3px;
+			outline: none;
+		}
+		input[type="color"] {
+			width: 100%;
+			height: 35px;
+			border: none;
+			cursor: pointer;
+			border-radius: 4px;
+			background: none;
+		}
+		select {
+			width: 100%;
+			padding: 8px;
+			background: #333;
+			color: #fff;
+			border: 1px solid #444;
+			border-radius: 4px;
+			outline: none;
+		}
+		.action-buttons {
+			padding: 20px;
+			background-color: #2e2e2e;
+			border-top: 1px solid #3d3d3d;
+			display: flex;
+			flex-direction: column;
+			gap: 10px;
+		}
+		button {
+			padding: 12px;
+			font-size: 0.9rem;
+			font-weight: bold;
+			color: white;
+			border: none;
+			border-radius: 4px;
+			cursor: pointer;
+			transition: background 0.2s;
+		}
+		.btn-export-stl { background-color: #2196f3; }
+		.btn-export-stl:hover { background-color: #1e88e5; }
+		.btn-export-3mf { background-color: #ff9800; }
+		.btn-export-3mf:hover { background-color: #f57c00; }
+		#canvas-container {
+			flex: 1;
+			position: relative;
+			background-color: #111;
+		}
+		#loading {
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			font-size: 1.2rem;
+			color: #888;
+			pointer-events: none;
+			display: none;
+		}
+	</style>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/STLExporter.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/three-3mf-exporter@0.0.4/dist/three-3mf-exporter.umd.js"></script>
+</head>
+<body>
+
+	<div id="sidebar">
+		<div class="header">
+			<h1>Worm Gear Generator</h1>
+			<p>Procedural 3D Modeler for Slicing & Printing</p>
+		</div>
+
+		<div class="controls-container">
+			<div class="control-group">
+				<label>Number of Starts (Worm Threads) <span id="val-starts">2</span></label>
+				<input type="range" id="param-starts" min="1" max="6" step="1" value="2">
+			</div>
+
+			<div class="control-group">
+				<label>Worm Pitch Diameter (mm) <span id="val-worm-dia">25</span></label>
+				<input type="range" id="param-worm-dia" min="10" max="60" step="1" value="25">
+			</div>
+
+			<div class="control-group">
+				<label>Worm Length (mm) <span id="val-worm-len">50</span></label>
+				<input type="range" id="param-worm-len" min="20" max="100" step="5" value="50">
+			</div>
+
+			<div class="control-group">
+				<label>Worm Pitch/Lead Factor <span id="val-pitch">4</span></label>
+				<input type="range" id="param-pitch" min="2" max="10" step="0.5" value="4">
+			</div>
+
+			<div class="control-group">
+				<label>Thread Depth Ratio <span id="val-depth">0.6</span></label>
+				<input type="range" id="param-depth" min="0.2" max="1.2" step="0.1" value="0.6">
+			</div>
+
+			<div class="control-group">
+				<label>Inner Bore Diameter (mm) <span id="val-bore">8</span></label>
+				<input type="range" id="param-bore" min="3" max="20" step="1" value="8">
+			</div>
+
+			<div class="control-group">
+				<label>Resolution (Segments) <span id="val-resolution">64</span></label>
+				<input type="range" id="param-resolution" min="32" max="128" step="16" value="64">
+			</div>
+
+			<div class="control-group">
+				<label>Material Color</label>
+				<input type="color" id="param-color" value="#4caf50">
+			</div>
+		</div>
+
+		<div class="action-buttons">
+			<button class="btn-export-stl" onclick="exportSTL()">Export as STL (Binary)</button>
+			<button class="btn-export-3mf" onclick="export3MF()">Export as 3MF (Bambu/Prusa)</button>
+		</div>
+	</div>
+
+	<div id="canvas-container">
+		<div id="loading">Generating Mesh...</div>
+	</div>
+
+	<script>
+		let scene, camera, renderer, controls, activeMesh;
+
+		// Initialize Scene
+		function init() {
+			const container = document.getElementById('canvas-container');
+
+			scene = new THREE.Scene();
+			scene.background = new THREE.Color(0x111111);
+
+			camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 1, 1000);
+			camera.position.set(50, 50, 80);
+
+			renderer = new THREE.WebGLRenderer({ antialias: true });
+			renderer.setSize(container.clientWidth, container.clientHeight);
+			renderer.shadowMap.enabled = true;
+			container.appendChild(renderer.domElement);
+
+			// Orbit Controls
+			controls = new THREE.OrbitControls(camera, renderer.domElement);
+			controls.enableDamping = true;
+			controls.dampingFactor = 0.05;
+
+			// Lighting
+			const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+			scene.add(ambientLight);
+
+			const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.0);
+			dirLight1.position.set(100, 100, 50);
+			scene.add(dirLight1);
+
+			const dirLight2 = new THREE.DirectionalLight(0x555555, 0.5);
+			dirLight2.position.set(-100, -100, -50);
+			scene.add(dirLight2);
+
+			// Grid Helpers
+			const gridHelper = new THREE.GridHelper(100, 50, 0x444444, 0x222222);
+			gridHelper.position.y = -15;
+			scene.add(gridHelper);
+
+			// Build Initial Gear
+			generateWormGear();
+
+			// Window resizing
+			window.addEventListener('resize', onWindowResize);
+
+			// Event Listeners for UI sliders
+			const inputs = ['param-starts', 'param-worm-dia', 'param-worm-len', 'param-pitch', 'param-depth', 'param-bore', 'param-resolution', 'param-color'];
+			inputs.forEach(id => {
+				document.getElementById(id).addEventListener('input', (e) => {
+					const valueSpan = document.getElementById('val-' + id.replace('param-', ''));
+					if (valueSpan) valueSpan.innerText = e.target.value;
+					generateWormGear();
+				});
+			});
+
+			animate();
+		}
+
+		// Procedural Worm Gear Geometry Builder (Swept profile approach)
+		function generateWormGear() {
+			if (activeMesh) scene.remove(activeMesh);
+
+			// Read settings
+			const starts = parseInt(document.getElementById('param-starts').value);
+			const pitchDiameter = parseFloat(document.getElementById('param-worm-dia').value);
+			const length = parseFloat(document.getElementById('param-worm-len').value);
+			const pitchFactor = parseFloat(document.getElementById('param-pitch').value);
+			const depth = parseFloat(document.getElementById('param-depth').value);
+			const bore = parseFloat(document.getElementById('param-bore').value);
+			const radialSegs = parseInt(document.getElementById('param-resolution').value);
+			const gearColor = document.getElementById('param-color').value;
+
+			const radius = pitchDiameter / 2;
+			const axialSegs = Math.round(length * 2); // Resolution along length
+
+			// Create Geometry manually via BufferGeometry to ensure water-tight 3D printability
+			const geometry = new THREE.BufferGeometry();
+			const vertices = [];
+			const indices = [];
+
+			// Compute indices/offsets for vertices
+			// Grid layout: Ring index 'z' (axial) from 0 to axialSegs, Radial index 'r' from 0 to radialSegs
+			for (let zIdx = 0; zIdx <= axialSegs; zIdx++) {
+				const zVal = -length / 2 + (zIdx / axialSegs) * length;
+				const progress = zIdx / axialSegs;
+
+				for (let rIdx = 0; rIdx < radialSegs; rIdx++) {
+					const angle = (rIdx / radialSegs) * Math.PI * 2;
+
+					// Calculate localized spiral thread influence 
+					// Adds a trapezoidal profile using standard sine harmonics to mimic physical gear cutters
+					const spiralOffset = (zVal / pitchFactor) * starts;
+					const normalizedAngle = (angle - spiralOffset) % (Math.PI * 2);
+					
+					let thicknessInfluence = Math.sin(normalizedAngle * starts);
+					// Square-ish gear tooth profile approximation
+					thicknessInfluence = Math.max(-0.5, Math.min(0.5, thicknessInfluence * 2));
+
+					const toothDelta = (thicknessInfluence + 0.5) * depth * (pitchFactor / 2);
+					const currentRadius = radius + toothDelta;
+
+					const xVal = Math.cos(angle) * currentRadius;
+					const yVal = Math.sin(angle) * currentRadius;
+
+					vertices.push(xVal, yVal, zVal);
+				}
+			}
+
+			// Generate outer envelope faces
+			for (let zIdx = 0; zIdx < axialSegs; zIdx++) {
+				for (let rIdx = 0; rIdx < radialSegs; rIdx++) {
+					const nextR = (rIdx + 1) % radialSegs;
+
+					const currRow = zIdx * radialSegs;
+					const nextRow = (zIdx + 1) * radialSegs;
+
+					const p1 = currRow + rIdx;
+					const p2 = currRow + nextR;
+					const p3 = nextRow + rIdx;
+					const p4 = nextRow + nextR;
+
+					// Triangle 1
+					indices.push(p1, p3, p2);
+					// Triangle 2
+					indices.push(p2, p3, p4);
+				}
+			}
+
+			// Bore and cap construction for manifold structure (ready to slice)
+			const baseIndex = vertices.length / 3;
+			const innerRadius = bore / 2;
+
+			// Generate Bore Vertices (Cylinder inside out)
+			for (let zIdx = 0; zIdx <= axialSegs; zIdx++) {
+				const zVal = -length / 2 + (zIdx / axialSegs) * length;
+				for (let rIdx = 0; rIdx < radialSegs; rIdx++) {
+					const angle = (rIdx / radialSegs) * Math.PI * 2;
+					const xVal = Math.cos(angle) * innerRadius;
+					const yVal = Math.sin(angle) * innerRadius;
+					vertices.push(xVal, yVal, zVal);
+				}
+			}
+
+			// Generate Inner Bore Faces (Reverse normals to face inwards)
+			for (let zIdx = 0; zIdx < axialSegs; zIdx++) {
+				for (let rIdx = 0; rIdx < radialSegs; rIdx++) {
+					const nextR = (rIdx + 1) % radialSegs;
+
+					const currRow = baseIndex + zIdx * radialSegs;
+					const nextRow = baseIndex + (zIdx + 1) * radialSegs;
+
+					const p1 = currRow + rIdx;
+					const p2 = currRow + nextR;
+					const p3 = nextRow + rIdx;
+					const p4 = nextRow + nextR;
+
+					indices.push(p1, p2, p3);
+					indices.push(p2, p4, p3);
+				}
+			}
+
+			// Cap the ends (Connect outer mesh rings to inner bore rings)
+			const outerCapStart = 0;
+			const outerCapEnd = axialSegs * radialSegs;
+			const innerCapStart = baseIndex;
+			const innerCapEnd = baseIndex + axialSegs * radialSegs;
+
+			for (let rIdx = 0; rIdx < radialSegs; rIdx++) {
+				const nextR = (rIdx + 1) % radialSegs;
+
+				// Front Cap (z = -length/2)
+				indices.push(outerCapStart + rIdx, outerCapStart + nextR, innerCapStart + rIdx);
+				indices.push(outerCapStart + nextR, innerCapStart + nextR, innerCapStart + rIdx);
+
+				// Back Cap (z = length/2)
+				indices.push(outerCapEnd + rIdx, innerCapEnd + rIdx, outerCapEnd + nextR);
+				indices.push(outerCapEnd + nextR, innerCapEnd + rIdx, innerCapEnd + nextR);
+			}
+
+			// Set up buffers
+			geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+			geometry.setIndex(indices);
+			geometry.computeVertexNormals();
+
+			// Material Configuration
+			const material = new THREE.MeshStandardMaterial({
+				color: new THREE.Color(gearColor),
+				roughness: 0.2,
+				metalness: 0.8,
+				side: THREE.DoubleSide
+			});
+
+			activeMesh = new THREE.Mesh(geometry, material);
+			scene.add(activeMesh);
+		}
+
+		function onWindowResize() {
+			const container = document.getElementById('canvas-container');
+			camera.aspect = container.clientWidth / container.clientHeight;
+			camera.updateProjectionMatrix();
+			renderer.setSize(container.clientWidth, container.clientHeight);
+		}
+
+		function animate() {
+			requestAnimationFrame(animate);
+			controls.update();
+			renderer.render(scene, camera);
+		}
+
+		// Export Functionality
+		function downloadFile(blob, filename) {
+			const link = document.createElement('a');
+			link.href = URL.createObjectURL(blob);
+			link.download = filename;
+			link.click();
+			URL.revokeObjectURL(link.href);
+		}
+
+		function exportSTL() {
+			if (!activeMesh) return;
+			const exporter = new THREE.STLExporter();
+			const result = exporter.parse(activeMesh, { binary: true });
+			const blob = new Blob([result], { type: 'application/octet-stream' });
+			downloadFile(blob, 'procedural_worm_gear.stl');
+		}
+
+		async function export3MF() {
+			if (!activeMesh) return;
+			try {
+				// Dynamically build the package's 3MF zip components via exported package module
+				const blob = await three3mfExporter.exportTo3MF(activeMesh);
+				downloadFile(blob, 'procedural_worm_gear.3mf');
+			} catch (err) {
+				console.error("3MF Export failed: ", err);
+				alert("Failed to export 3MF directly. Defaulting to fallback STL export instead.");
+				exportSTL();
+			}
+		}
+
+		window.onload = init;
+	</script>
+</body>
+</html>
