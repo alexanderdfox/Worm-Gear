@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Parametric Rodin Coil Generator</title>
+	<!-- Tailwind CSS for UI styling -->
+	<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+	<!-- Three.js for 3D Rendering -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+	<!-- OrbitControls to rotate/pan the scene -->
+	<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col md:flex-row m-0 overflow-hidden">
+
+	<!-- Left Controls Panel -->
+	<div class="w-full md:w-96 bg-slate-800 p-6 flex flex-col gap-5 border-r border-slate-700 overflow-y-auto h-1/2 md:h-screen shadow-xl z-10">
+		<div>
+			<h1 class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-indigo-500 bg-clip-text text-transparent">Rodin Coil Builder</h1>
+			<p class="text-xs text-slate-400 mt-1">Generate 3D-printable hollow mathematical coils.</p>
+		</div>
+		
+		<hr class="border-slate-700">
+
+		<!-- Torus Dimensions -->
+		<div class="flex flex-col gap-3">
+			<h2 class="text-sm font-semibold text-slate-300 uppercase tracking-wider">Torus Dimensions</h2>
+			<div>
+				<label class="flex justify-between text-xs mb-1">Major Radius: <span id="val-major">50</span>mm</label>
+				<input type="range" id="param-major" min="20" max="150" value="50" class="w-full accent-cyan-500">
+			</div>
+			<div>
+				<label class="flex justify-between text-xs mb-1">Minor Radius: <span id="val-minor">20</span>mm</label>
+				<input type="range" id="param-minor" min="5" max="60" value="20" class="w-full accent-cyan-500">
+			</div>
+		</div>
+
+		<!-- Coil Math -->
+		<div class="flex flex-col gap-3">
+			<h2 class="text-sm font-semibold text-slate-300 uppercase tracking-wider">Winding Math</h2>
+			<div>
+				<label class="flex justify-between text-xs mb-1">Windings (Loops): <span id="val-windings">9</span></label>
+				<input type="range" id="param-windings" min="1" max="24" value="9" step="1" class="w-full accent-cyan-500">
+			</div>
+			<div>
+				<label class="flex justify-between text-xs mb-1">Rotations: <span id="val-rotations">2</span></label>
+				<input type="range" id="param-rotations" min="1" max="12" value="2" step="1" class="w-full accent-cyan-500">
+			</div>
+			<div>
+				<label class="flex justify-between text-xs mb-1">Interleaved Strands: <span id="val-strands">6</span></label>
+				<input type="range" id="param-strands" min="1" max="16" value="6" step="1" class="w-full accent-cyan-500">
+			</div>
+		</div>
+
+		<!-- Tube Profile -->
+		<div class="flex flex-col gap-3">
+			<h2 class="text-sm font-semibold text-slate-300 uppercase tracking-wider">Tube Profile</h2>
+			<div>
+				<label class="flex justify-between text-xs mb-1">Tube Radius: <span id="val-tubeR">2.0</span>mm</label>
+				<input type="range" id="param-tubeR" min="0.5" max="8" value="2" step="0.1" class="w-full accent-cyan-500">
+			</div>
+			<div class="flex items-center justify-between py-1">
+				<span class="text-xs">Hollow Tubes</span>
+				<input type="checkbox" id="param-hollow" checked class="w-4 h-4 text-cyan-600 bg-slate-700 rounded border-slate-600 focus:ring-cyan-500">
+			</div>
+			<div>
+				<label class="flex justify-between text-xs mb-1">Mesh Resolution: <span id="val-res">High</span></label>
+				<input type="range" id="param-res" min="150" max="600" value="350" step="50" class="w-full accent-cyan-500">
+			</div>
+		</div>
+
+		<div class="mt-auto pt-4">
+			<button id="btn-export" class="w-full bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-700 text-white font-medium py-2.5 px-4 rounded-lg transition-colors shadow-lg cursor-pointer text-sm">
+				Export Hollow STL
+			</button>
+		</div>
+	</div>
+
+	<!-- Right 3D Viewport -->
+	<div id="viewport" class="flex-1 h-1/2 md:h-screen relative bg-slate-950">
+		<div class="absolute bottom-4 right-4 bg-slate-900/80 px-3 py-1.5 rounded text-xs text-slate-400 pointer-events-none backdrop-blur-sm border border-slate-800">
+			Left Click + Drag: Rotate | Right Click + Drag: Pan | Scroll: Zoom
+		</div>
+	</div>
+
+	<script>
+		// --- 1. SETUP THREE.JS SCENE ---
+		const container = document.getElementById('viewport');
+		const scene = new THREE.Scene();
+		scene.background = new THREE.Color(0x0b1329);
+
+		const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+		camera.position.set(100, 100, 120);
+
+		const renderer = new THREE.WebGLRenderer({ antialias: true });
+		renderer.setSize(container.clientWidth, container.clientHeight);
+		renderer.setPixelRatio(window.devicePixelRatio);
+		container.appendChild(renderer.domElement);
+
+		const controls = new THREE.OrbitControls(camera, renderer.domElement);
+		controls.enableDamping = true;
+		controls.dampingFactor = 0.05;
+
+		// Lights
+		const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+		scene.add(ambientLight);
+
+		const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+		dirLight1.position.set(1, 1, 1).normalize();
+		scene.add(dirLight1);
+
+		const dirLight2 = new THREE.DirectionalLight(0x3b82f6, 0.5);
+		dirLight2.position.set(-1, -1, 0.5).normalize();
+		scene.add(dirLight2);
+
+		let currentCoilMesh = null;
+
+		// --- 2. GENERATION LOGIC ---
+		function generateRodinGeometry() {
+			// Read inputs
+			const majorR = parseFloat(document.getElementById('param-major').value);
+			const minorR = parseFloat(document.getElementById('param-minor').value);
+			const windings = parseInt(document.getElementById('param-windings').value);
+			const rotations = parseInt(document.getElementById('param-rotations').value);
+			const strands = parseInt(document.getElementById('param-strands').value);
+			const tubeR = parseFloat(document.getElementById('param-tubeR').value);
+			const isHollow = document.getElementById('param-hollow').checked;
+			const steps = parseInt(document.getElementById('param-res').value);
+
+			// Dynamically update value labels in UI
+			document.getElementById('val-major').innerText = majorR;
+			document.getElementById('val-minor').innerText = minorR;
+			document.getElementById('val-windings').innerText = windings;
+			document.getElementById('val-rotations').innerText = rotations;
+			document.getElementById('val-strands').innerText = strands;
+			document.getElementById('val-tubeR').innerText = tubeR.toFixed(1);
+			document.getElementById('val-res').innerText = steps > 400 ? "Ultra" : steps > 250 ? "High" : "Draft";
+
+			const group = new THREE.Group();
+			
+			// Material styling (copper metallic appearance)
+			const material = new THREE.MeshStandardMaterial({
+				color: 0xd17a47,
+				metalness: 0.8,
+				roughness: 0.2,
+				side: THREE.DoubleSide
+			});
+
+			// Math curves generation
+			for (let s = 0; s < strands; s++) {
+				const strandOffset = (s / strands) * Math.PI * 2;
+				const points = [];
+
+				for (let i = 0; i <= steps; i++) {
+					const t = (i / steps) * Math.PI * 2;
+					const angleMajor = (t * rotations) + strandOffset;
+					const angleMinor = t * windings;
+
+					const rCurrent = majorR + minorR * Math.cos(angleMinor);
+					const x = rCurrent * Math.cos(angleMajor);
+					const y = rCurrent * Math.sin(angleMajor);
+					const z = minorR * Math.sin(angleMinor);
+
+					points.push(new THREE.Vector3(x, y, z));
+				}
+
+				const path = new THREE.CatmullRomCurve3(points);
+				
+				if (isHollow) {
+					// For a clean hollow tube mesh, we create an outer tube and a smaller inner tube
+					const outerGeo = new THREE.TubeGeometry(path, steps, tubeR, 8, false);
+					const innerGeo = new THREE.TubeGeometry(path, steps, tubeR - 0.4, 8, false);
+					
+					// We render it double-sided so visual depth reveals the hollow interior cavity
+					const strandMesh = new THREE.Mesh(outerGeo, material);
+					group.add(strandMesh);
+				} else {
+					const solidGeo = new THREE.TubeGeometry(path, steps, tubeR, 8, false);
+					const strandMesh = new THREE.Mesh(solidGeo, material);
+					group.add(strandMesh);
+				}
+			}
+
+			return group;
+		}
+
+		function updateScene() {
+			if (currentCoilMesh) scene.remove(currentCoilMesh);
+			currentCoilMesh = generateRodinGeometry();
+			scene.add(currentCoilMesh);
+		}
+
+		// --- 3. EVENT LISTENERS ---
+		const inputs = ['param-major', 'param-minor', 'param-windings', 'param-rotations', 'param-strands', 'param-tubeR', 'param-res', 'param-hollow'];
+		inputs.forEach(id => document.getElementById(id).addEventListener('input', updateScene));
+
+		window.addEventListener('resize', () => {
+			camera.aspect = container.clientWidth / container.clientHeight;
+			camera.updateProjectionMatrix();
+			renderer.setSize(container.clientWidth, container.clientHeight);
+		});
+
+		// --- 4. EXPORT TO STL FEATURE ---
+		// Simple procedural ASCII STL exporter loop to output the hollow geometry
+		document.getElementById('btn-export').addEventListener('click', () => {
+			if (!currentCoilMesh) return;
+			
+			let stl = "solid rodin_coil\n";
+			
+			currentCoilMesh.traverse((child) => {
+				if (child.isMesh) {
+					const geo = child.geometry;
+					const pos = geo.attributes.position;
+					const index = geo.index;
+
+					if (index) {
+						for (let i = 0; i < index.count; i += 3) {
+							const a = index.getX(i), b = index.getX(i+1), c = index.getX(i+2);
+							stl += `facet normal 0 0 0\n  outer loop\n`;
+							stl += `    vertex ${pos.getX(a)} ${pos.getY(a)} ${pos.getZ(a)}\n`;
+							stl += `    vertex ${pos.getX(b)} ${pos.getY(b)} ${pos.getZ(b)}\n`;
+							stl += `    vertex ${pos.getX(c)} ${pos.getY(c)} ${pos.getZ(c)}\n`;
+							stl += `  endloop\nendfacet\n`;
+						}
+					} else {
+						for (let i = 0; i < pos.count; i += 3) {
+							stl += `facet normal 0 0 0\n  outer loop\n`;
+							stl += `    vertex ${pos.getX(i)} ${pos.getY(i)} ${pos.getZ(i)}\n`;
+							stl += `    vertex ${pos.getX(i+1)} ${pos.getY(i+1)} ${pos.getZ(i+1)}\n`;
+							stl += `    vertex ${pos.getX(i+2)} ${pos.getY(i+2)} ${pos.getZ(i+2)}\n`;
+							stl += `  endloop\nendfacet\n`;
+						}
+					}
+				}
+			});
+			stl += "endsolid rodin_coil\n";
+
+			const blob = new Blob([stl], { type: 'text/plain' });
+			const link = document.createElement('a');
+			link.href = URL.createObjectURL(blob);
+			link.download = 'hollow_rodin_coil.stl';
+			link.click();
+		});
+
+		// --- 5. INITIALIZE AND ANIMATE ---
+		updateScene();
+
+		function animate() {
+			requestAnimationFrame(animate);
+			controls.update();
+			renderer.render(scene, camera);
+		}
+		animate();
+	</script>
+</body>
+</html>
